@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>xsukax Youtube to Embed URL</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; background: #000; color: #00ff00; padding: 20px; line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #00ff00; text-align: center; margin-bottom: 30px; font-size: 24px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .brand { color: #00ff41; font-weight: bold; }
+        .input-section { margin-bottom: 30px; }
+        label { display: block; margin-bottom: 8px; color: #999; font-size: 14px; }
+        input[type="text"], textarea { width: 100%; padding: 12px; border: 1px solid #333; background: #111; color: #00ff00; font-family: inherit; font-size: 14px; }
+        input[type="text"]:focus, textarea:focus { outline: none; border-color: #00ff00; }
+        textarea { min-height: 120px; resize: vertical; }
+        .button-group { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+        button { padding: 12px 20px; border: 1px solid #00ff00; background: #000; color: #00ff00; font-family: inherit; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        button:hover { background: #00ff00; color: #000; }
+        .convert-btn { background: #00ff00; color: #000; }
+        .convert-btn:hover { background: #000; color: #00ff00; }
+        .clear-btn { border-color: #ff6600; color: #ff6600; }
+        .clear-btn:hover { background: #ff6600; color: #000; }
+        .output-section { margin-top: 30px; }
+        h3 { color: #00ff00; margin-bottom: 15px; font-size: 18px; }
+        .result-url { background: #111; padding: 15px; margin: 10px 0; border-left: 3px solid #00ff00; position: relative; word-break: break-all; }
+        .result-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; }
+        .copy-btn, .embed-btn { background: #222; color: #00ff00; border: 1px solid #333; padding: 4px 8px; font-size: 12px; cursor: pointer; }
+        .copy-btn:hover, .embed-btn:hover { background: #00ff00; color: #000; }
+        .embed-container { margin-top: 10px; padding: 10px; background: #111; border: 1px solid #333; display: none; }
+        .embed-container.show { display: block; }
+        .embed-container iframe { width: 100%; height: 280px; border: 1px solid #333; }
+        .converted-link { color: #00ff00; text-decoration: none; }
+        .converted-link:hover { color: #00ff41; }
+        .stats { padding: 10px; background: #002200; border-left: 3px solid #00ff00; margin: 15px 0; }
+        .error { padding: 10px; background: #220000; border-left: 3px solid #ff0000; margin: 15px 0; color: #ff6666; }
+        .success { padding: 10px; background: #002200; border-left: 3px solid #00ff00; margin: 15px 0; color: #66ff66; }
+        .test-section { margin-top: 30px; padding: 20px; background: #111; border: 1px solid #333; text-align: center; }
+        .test-section button { width: auto; }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            h1 { font-size: 20px; }
+            .button-group { flex-direction: column; }
+            button { width: 100%; }
+            .result-actions { position: static; margin-top: 10px; justify-content: flex-start; }
+            .result-url { padding-right: 15px; }
+            .embed-container iframe { height: 200px; }
+        }
+        @media (max-width: 480px) {
+            .result-actions { flex-direction: column; }
+            .copy-btn, .embed-btn { margin-bottom: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span class="brand">xsukax</span> Youtube to Embed URL</h1>
+
+        <div class="input-section">
+            <label for="singleUrl">$ single_url_convert</label>
+            <input type="text" id="singleUrl" placeholder="paste youtube url here...">
+            <div class="button-group">
+                <button class="convert-btn" onclick="convertSingleUrl()">convert</button>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <label for="multipleUrls">$ batch_convert (one per line)</label>
+            <textarea id="multipleUrls" placeholder="paste multiple youtube urls here..."></textarea>
+            <div class="button-group">
+                <button class="convert-btn" onclick="convertMultipleUrls()">convert all</button>
+                <button class="clear-btn" onclick="clearAll()">clear</button>
+            </div>
+        </div>
+
+        <div class="output-section">
+            <h3>> output</h3>
+            <div id="results"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>> test mode</h3>
+            <p style="font-size: 12px; color: #666; margin: 10px 0;">load sample urls for testing</p>
+            <button class="clear-btn" onclick="loadTestUrls()">load test data</button>
+        </div>
+    </div>
+
+    <script>
+        let resultCounter = 0;
+
+        function extractVideoId(url) {
+            url = url.trim();
+            if (!url) return null;
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtube\.com\/watch\?.*&v=)([^&\n?#]+)/,
+                /youtu\.be\/([^?&\n#]+)/,
+                /youtube\.com\/embed\/([^?&\n#]+)/,
+                /youtube\.com\/v\/([^?&\n#]+)/,
+                /youtube\.com\/e\/([^?&\n#]+)/,
+                /youtube\.com\/shorts\/([^?&\n#]+)/,
+                /youtube\.com\/live\/([^?&\n#]+)/,
+                /youtube\.com\/watch\/([^?&\n#]+)/,
+                /youtube\.com\/oembed\?url=.*%3D([^&\n?#]+)/,
+                /youtube\.com\/watch\?feature=player_embedded&v=([^&\n?#]+)/,
+                /youtube\.com\/watch\?app=desktop&v=([^&\n?#]+)/,
+                /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+            ];
+            for (let pattern of patterns) {
+                const match = url.match(pattern);
+                if (match && match[1]) {
+                    return match[1];
+                }
+            }
+            return null;
+        }
+
+        function convertToEmbed(videoId) {
+            return `https://www.youtube.com/embed/${videoId}`;
+        }
+
+        function convertSingleUrl() {
+            const input = document.getElementById('singleUrl');
+            const url = input.value.trim();
+            if (!url) {
+                showMessage('error: no url provided', 'error');
+                return;
+            }
+            const videoId = extractVideoId(url);
+            if (!videoId) {
+                showMessage('error: invalid youtube url format', 'error');
+                return;
+            }
+            const embedUrl = convertToEmbed(videoId);
+            const results = document.getElementById('results');
+            results.innerHTML = '';
+            displayResult(url, embedUrl);
+            showMessage('success: url converted', 'success');
+        }
+
+        function convertMultipleUrls() {
+            const input = document.getElementById('multipleUrls');
+            const urls = input.value.split('\n').filter(url => url.trim());
+            if (urls.length === 0) {
+                showMessage('error: no urls provided', 'error');
+                return;
+            }
+            const results = document.getElementById('results');
+            results.innerHTML = '';
+            let converted = 0;
+            let failed = 0;
+            urls.forEach(url => {
+                const videoId = extractVideoId(url);
+                if (videoId) {
+                    const embedUrl = convertToEmbed(videoId);
+                    displayResult(url, embedUrl);
+                    converted++;
+                } else if (url.trim()) {
+                    displayResult(url, 'invalid url format', true);
+                    failed++;
+                }
+            });
+            showStats(converted, failed);
+        }
+
+        function displayResult(originalUrl, convertedUrl, isError = false) {
+            const results = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            const resultId = `result-${resultCounter++}`;
+            resultDiv.className = 'result-url';
+            resultDiv.id = resultId;
+            
+            if (isError) {
+                resultDiv.innerHTML = `
+                    <strong style="color: #666;">input:</strong> ${originalUrl}<br>
+                    <strong style="color: #ff6666;">error:</strong> ${convertedUrl}
+                `;
+                resultDiv.style.borderLeftColor = '#ff0000';
+            } else {
+                resultDiv.innerHTML = `
+                    <strong style="color: #666;">input:</strong> ${originalUrl}<br>
+                    <strong style="color: #00ff00;">output:</strong> <a href="${convertedUrl}" target="_blank" class="converted-link">${convertedUrl}</a>
+                    <div class="result-actions">
+                        <button class="copy-btn" onclick="copyToClipboard('${convertedUrl}')">copy</button>
+                        <button class="embed-btn" onclick="toggleEmbed('${resultId}', '${convertedUrl}')">embed</button>
+                    </div>
+                    <div class="embed-container" id="embed-${resultId}">
+                        <iframe src="${convertedUrl}" allowfullscreen></iframe>
+                    </div>
+                `;
+            }
+            results.appendChild(resultDiv);
+        }
+
+        function toggleEmbed(resultId, embedUrl) {
+            const embedContainer = document.getElementById(`embed-${resultId}`);
+            const embedBtn = document.querySelector(`#${resultId} .embed-btn`);
+            
+            if (embedContainer.classList.contains('show')) {
+                embedContainer.classList.remove('show');
+                embedBtn.textContent = 'embed';
+            } else {
+                embedContainer.classList.add('show');
+                embedBtn.textContent = 'hide';
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showMessage('success: copied to clipboard', 'success');
+            }).catch(() => {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showMessage('success: copied to clipboard', 'success');
+            });
+        }
+
+        function showMessage(message, type) {
+            const existingMessage = document.querySelector('.error, .success');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            const container = document.querySelector('.container');
+            container.insertBefore(messageDiv, container.firstChild);
+            setTimeout(() => {
+                messageDiv.style.opacity = '0';
+                setTimeout(() => messageDiv.remove(), 500);
+            }, 3000);
+        }
+
+        function showStats(converted, failed) {
+            const existingStats = document.querySelector('.stats');
+            if (existingStats) {
+                existingStats.remove();
+            }
+            const statsDiv = document.createElement('div');
+            statsDiv.className = 'stats';
+            statsDiv.innerHTML = `
+                <strong>conversion stats:</strong><br>
+                > converted: ${converted}<br>
+                > failed: ${failed}<br>
+                > total: ${converted + failed}
+            `;
+            const results = document.getElementById('results');
+            results.parentNode.insertBefore(statsDiv, results);
+        }
+
+        function clearAll() {
+            document.getElementById('singleUrl').value = '';
+            document.getElementById('multipleUrls').value = '';
+            document.getElementById('results').innerHTML = '';
+            const existingStats = document.querySelector('.stats');
+            if (existingStats) {
+                existingStats.remove();
+            }
+            resultCounter = 0;
+            showMessage('success: all cleared', 'success');
+        }
+
+        function loadTestUrls() {
+            const testUrls = [
+                'https://www.youtube.com/watch?v=i7Ki-mI30fo',
+                'http://youtube.com/watch?v=IBJC3bCSlHk&feature=em-uploademail',
+                'http://m.youtube.com/watch?v=VPI-ExBK-kc#t=0m10s',
+                'http://youtu.be/pWAVHm_zHEI?t=1',
+                'https://www.youtube.com/e/HRd91Y5-Aio'
+            ].join('\n');
+            document.getElementById('multipleUrls').value = testUrls;
+            showMessage('success: test data loaded', 'success');
+        }
+    </script>
+</body>
+</html>
